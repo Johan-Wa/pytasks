@@ -1,6 +1,7 @@
 # --------------- Imports -------------
 import os
 import subprocess
+import csv
 
 # --------------- Functions ------------
 def create_a_csv(path,name):
@@ -40,7 +41,121 @@ def optain_file_list(path):
     files_names = [i.split('.')[0] for i in files_names]
 
     return files_names
+
+def read_csv(path,filename):
+    ''' Read the csv and returns the reader.
+    Params:
+        - path --> The dir path
+        - filename --> Name of the file
+    Returns: 
+        - reader --> The csv.reader
+    '''
+
+    with open(f'{path}/{filename}.csv') as f:
+        reader = csv.reader(f)
+        reader = list(reader)
+
+    return reader
+
+def get_task_list(path,filename):
+    '''Read a csv file and reurns a lis of tasks in the file.
+    Params:
+        - path --> The dir path
+        - filename --> the file name of the file
+    Returns:
+        - new_list --> a list of strings
+    '''
+    tasks_data = read_csv(path,filename)
+    state_dict = {
+        'no started': '_',
+        'completed': '#',
+        'canceled': 'X',
+        'process': '%',
+    }
+    priority_dict = {
+        'normal': '-',
+        'important': '!',
+        'urgent': '*!'
+    }
+    
+    tasks_list = [f'{i[0]}. {i[1]}          [{state_dict[i[2]]}][{priority_dict[i[6]]}]' for i in tasks_data]
+
+    return tasks_list
+
+def new_task(path, filename, data):
+    '''Create a new task in the file.
+    Params:
+        - path --> Dir path
+        - filename --> name of the file
+        - data --> a list with the data to get in
+            - task_name --> name of the task
+            - state --> state of the tasks [no started, completed, canceled, process]
+            - create_date --> date of creation
+            - finished_date --> when finished the task
+            - finish_time --> Time that takes finish the task
+            - priorityt --> the priority of the task [normal, important, urgent]
+    Returns:
+        None
+    '''
+    actual_list = read_csv(path,filename)
+    if len(actual_list) > 0:
+        last_i = int(actual_list[-1][0])
+        write_task(path,filename,data, last_i+1)
+    else:
+        write_task(path,filename,data)
+
+def update_task(path, filename, data, id_task):
+    ''' Update the data of a task.
+    Params:
+        - path --> path of the lists
+        - filename --> name of the file
+        - data --> data tu update
+        - id_task --> index of the task
+    Returns:
+        None
+    '''
+    file = read_csv(path,filename)
+    for idx, l in enumerate(file): 
+        if int(l[0]) == id_task:
+            data.insert(0,id_task)
+            file[idx] = data
+
+    with open(f'{path}/{filename}.csv', 'w') as f:
+        writer = csv.writer(f,delimiter=',')
+        writer.writerows(file)
+
+def write_task(path, filename, data, id_task=1):
+    '''Write a csv file.
+    Params:
+        - path --> path of the lists
+        - filename --> name of the file
+        - data --> data tu update
+        - id_task --> index of the task, by default = 1
+    Returns:
+        None
+    '''
+    data.insert(0,id_task)
+    with open(f'{path}/{filename}.csv', 'a') as f:
+        writer = csv.writer(f, delimiter=',')
+        writer.writerow(data)
+
+def del_task(path, filename, id_t):
+    ''' Delete a task in the file.'''
+    actual_list = read_csv(path, filename)
+    actual_list = list(actual_list)
+    print(actual_list)
+    if len(actual_list) > 0:
+        for idx, row in enumerate(actual_list):
+            if int(row[0]) == id_t:
+                actual_list.pop(idx)
+                print(actual_list)
+    with open(f'{path}/{filename}.csv', 'w') as f:
+        writer = csv.writer(f, delimiter=',')
+        writer.writerows(actual_list)
+
 # --------------- Main -----------------
 if __name__ == "__main__":
     path = 'csv_lists'
-    print(delete_a_csv(path,'Archivo 1'))
+    data = ['Hacer las plantillas','process','21-06-2024',0,0,'normal']
+    update_task(path,'frankenpy', data, 1)
+    #del_task(path,'limpiar la casa', 2)

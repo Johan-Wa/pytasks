@@ -1,6 +1,6 @@
 # ----------- Imports
 import curses
-from curses import wrapper
+from curses import color_pair, wrapper
 import sys_func
 
 #----------- Clases --------
@@ -20,7 +20,7 @@ class DisplayList():
         self.arrows_note = 'Use the arrows to move UP and DOWN'
         self.enter_note = 'Press ENTER to select the list'
         self.wh = 0
-        self.ww = 45
+        self.ww = 60
 
 
     def print_list(self,scr,menu_list,selected_row):
@@ -66,8 +66,8 @@ class DisplayList():
                 scr.addstr(pos_y + pos_count, self.ww//8, i[1])
                 pos_count += 1
 
-    def get_list(self,list_path):
-        self.menu = sys_func.optain_file_list(path_list)
+    def get_list(self):
+        self.menu = sys_func.optain_file_list(self.list_path)
 
     def new_item(self, scr):
         '''Creates a new file in the dir of csv lists, and generated a new entry in de list.
@@ -80,13 +80,37 @@ class DisplayList():
         new_i = w_item.main(scr)
         if len(new_i) > 0:
             sys_func.create_a_csv(self.list_path, new_i)
-        return new_i
-    
+            
     def delete_item(self, scr, selected_row):
+        ''' Delete a csv file from the list.
+        Params:
+            - scr --> The screen
+            - selected_row --> Is the selected item in the list
+        Returns: 
+            - del_item --> The name of the delete file without extension
+        '''
         scr.clear()
-        del_item = self.menu[selected_row]
-        sys_func.delete_a_csv(self.list_path, del_item)
-        return del_item
+        if len(self.menu) > 0:
+            del_item = self.menu[selected_row]
+            sys_func.delete_a_csv(self.list_path, del_item)
+            return del_item
+
+    def when_press_enter(self, scr, selected_row):
+        ''' Displays the next menu.
+        Params:
+            - scr --> The screen
+            - selected_row --> The name of the list to display
+        Returns:
+            None
+        '''
+        tasks_window = DisplayTasks(self.menu[selected_row],
+                                    list_path=self.list_path,
+                                    name=f'{self.menu[selected_row]}: Tasks')
+
+        tasks_window.enter_note = "Press ENTER to select the task's options"
+        tasks_window.quit_note = "Press Esc to go back"
+        tasks_window.main(scr)
+        scr.clear()
 
     def main(self,scr):
         '''This is the main function of the class, this function initialize the program.
@@ -94,7 +118,7 @@ class DisplayList():
             - self --> the class properties, don need entry
             - scr --> the screen, this normally is given by the wrapper
         '''
-        self.get_list(self.list_path)
+        self.get_list()
         
         # setting the colors of the app
         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)
@@ -114,7 +138,8 @@ class DisplayList():
         scr.nodelay(1)
         scr.timeout(150)
         while True:
-            self.get_list(self.list_path)
+
+            self.get_list()
             win = curses.newwin(self.wh,self.ww, curses.LINES//2 - self.wh//2, curses.COLS//2 - self.ww//2)
 
             if len(self.menu) <= 10:
@@ -140,9 +165,7 @@ class DisplayList():
 
             self.print_list(win, self.menu, current_row)
 
-            scr.refresh()
             win.refresh()
-            
     
             key = scr.getch()
             
@@ -156,7 +179,9 @@ class DisplayList():
                 elif chr(key) == 'c' or chr(key) == 'C':
                     self.new_item(scr)
                 elif chr(key) == 'd' or chr(key) == 'D':
-                    item = self.delete_item(scr,current_row)
+                    self.delete_item(scr,current_row)
+                elif key == curses.KEY_ENTER or key == 10 or key == 13:
+                    self.when_press_enter(scr,current_row)
 
             except:
                 pass
@@ -168,9 +193,8 @@ class DisplayList():
                 elif key == curses.KEY_DOWN and current_row == self.list_range[1]:
                     self.list_range[0] += 1
                     self.list_range[1] += 1
-            win.clear()
 
-            scr.refresh()
+            win.clear()
             win.refresh()
             
 
@@ -235,12 +259,359 @@ class Inpbox():
     def wrapp(self):
         wrapper(self.main)
 
+
+class DisplayTasks(DisplayList):
+    def __init__(self, filename:str,*arg,**kwargs):
+        super().__init__(*arg,**kwargs)
+        self.filename = filename
+
+    def get_list(self):
+        self.menu = sys_func.get_task_list(self.list_path,self.filename)
+
+    def delete_item(self, scr, selected_row):
+        ''' Delete a task from the list.
+        Params:
+            - scr --> The screen
+            - selected_row --> row of the task
+        Returns:
+            - del_task --> name of the task
+        '''
+        scr.clear()
+        del_task = self.menu[selected_row]
+        del_task = int(del_task.split('.')[0])
+        scr.clear()
+        scr.refresh()
+
+        sys_func.del_task(self.list_path,self.filename,del_task)
+
+    def new_item(self, scr):
+        scr.clear()
+        new_task = CreateTask(self.list_path, self.filename,'New Task', ['','','24-06-2024','0','0',''])
+        new_task.main(scr)
+        scr.clear()
+        scr.refresh()
+       
+    def when_press_enter(self, scr, selected_row):
+        scr.clear()
+        options_list = ListSelect(['Update','View data','Track'], 'Select option')
+        option = options_list.main(scr)
+        scr.clear()
+        scr.refresh()
+        selected_task = self.menu[selected_row].split('.')[0]
+        file = sys_func.read_csv(self.list_path,self.filename)
+        for idx, row in enumerate(file):
+            if row[0] == selected_task:
+                data = file[idx]
+        idx = data.pop(0)
+        if option == 'Update':
+            update_task = CreateTask(self.list_path, self.filename, 'Update', data,
+                                     new = False, id_task=int(idx))
+            update_task.main(scr)
+            scr.clear()
+            scr.refresh()
+        elif option == 'View data':
+            view_task = ShowTaskInfo(self.list_path, self.filename, int(idx), f'Task: {idx} - {data[0]}')
+            view_task.main(scr)
+            scr.clear()
+            scr.addstr(option)
+            scr.refresh()
+            
+
+
+class CreateTask():
+    '''This is a form that gets the information given by the user and return a list with the data.
+    Params:
+        - promt --> the promt to show in the window
+    Returns:
+        - data --> data list
+            - task_name --> string
+            - state --> option [no started, completed, canceled, process]
+            - create_date --> string (date) D-M-Y
+            - finished_date --> string (date) D-M-Y
+            - finish_time --> time to finish task (string) H:M:S
+            - priority --> option [normal, important, urgent]
+
+    '''
+    def __init__(self,list_path, filename, promt:str, data:list, new = True, id_task = 0):
+        self.promt = promt
+        self.path = list_path
+        self.filename = filename
+        self.default_data = data
+        self.window_objets = [
+            'Task name:', 'State:','Create date:',
+            'Finished date:','Finish time:',
+            'Priority:', ' [Cancel] ', ' [Ok] '
+        ]
+        self.new = new
+        self.id_task = id_task
+    def main(self,scr):
+        curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
+        curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_BLACK)
+        curses.init_pair(4,curses.COLOR_BLACK,curses.COLOR_WHITE)
+        curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_BLACK)
+        curses.curs_set(0)
+
+        data_list = self.default_data
+        wh = 11
+        ww = 60
+        current_row = 0
+
+        scr.clear()
+        win = curses.newwin(wh, ww, curses.LINES//2 - wh//2, curses.COLS//2 - ww//2)
+        win.nodelay(1)
+        win.timeout(150)
+        while True:
+            win.border()
+            win.addstr(0,2,' ' + self.promt + ' ',color_pair(5))
+            
+            pos_y = 2
+
+            for idx, row in enumerate(self.window_objets[:6]):
+                if idx != current_row:
+                    win.addstr(pos_y,ww//6,self.window_objets[idx])
+                    win.addstr(pos_y,ww//2,data_list[idx])
+                    pos_y +=1
+                else:
+                    win.attron(color_pair(4))
+                    win.addstr(pos_y,ww//6 + 1,self.window_objets[idx])
+                    win.attroff(color_pair(4))
+                    win.addstr(pos_y,ww//2,data_list[idx])
+                    pos_y +=1
+
+            if current_row == 6:
+                win.attron(color_pair(4))
+                win.addstr(wh - 2, 2,self.window_objets[6])
+                win.attroff(color_pair(4))
+            else:
+                win.attron(color_pair(2))
+                win.addstr(wh - 2, 2,self.window_objets[6])
+                win.attroff(color_pair(2))
+
+            scr.refresh()
+            win.refresh()
+
+            if current_row == 7:
+                win.attron(color_pair(4))
+                win.addstr(wh - 2, ww - len(self.window_objets[7]) - 2 ,self.window_objets[7])
+                win.attroff(color_pair(4))
+            else:
+                win.attron(color_pair(3))
+                win.addstr(wh - 2, ww - len(self.window_objets[7]) - 2,self.window_objets[7])
+                win.attroff(color_pair(3))
+
+            scr.refresh()
+            win.refresh()
+
+            key = scr.getch()
+            
+            if key == 27:
+               break
+            if key == curses.KEY_UP and current_row > 0 and current_row < 7:
+                current_row -= 1
+            elif key == curses.KEY_DOWN and current_row < 6:
+                current_row += 1
+            elif key == curses.KEY_LEFT and current_row == 7:
+                current_row -=1
+            elif key == curses.KEY_RIGHT and current_row == 6:
+                current_row += 1
+            elif (key == curses.KEY_ENTER or key == 10 or key == 13) and current_row < 6:
+                data_list[current_row] = self.when_press_enter(scr,current_row)
+            elif (key == curses.KEY_ENTER or key == 10 or key == 13) and current_row == 6:
+                break
+            elif (key == curses.KEY_ENTER or key == 10 or key == 13) and current_row == 7:
+                data_v, msg = self.validate_values(data_list)
+                if not data_v:
+                    scr.clear()
+                    scr.addstr(curses.LINES//2 + wh//2 + 2,curses.COLS//2 - len(msg)//2,msg,curses.color_pair(2))
+                    scr.refresh()
+                elif data_v and self.new: 
+                    sys_func.new_task(self.path, self.filename, data_list)
+                    break
+                elif data_v and not self.new: 
+                    sys_func.update_task(self.path, self.filename, data_list,
+                                         id_task=self.id_task)
+                    break
+                           
+            win.clear()
+            win.refresh()
+    
+    def validate_values(self,data):
+        validate = True
+        msg = ''
+        for i in data:
+            if len(i) == 0:
+                validate = False
+                msg = 'All the data should be completed'
+
+        return validate, msg
+
+
+
+    def when_press_enter(self,scr,selected_row):
+        item = ''
+        match selected_row:
+            case 0 | 2 | 3 | 4:
+                input = Inpbox(f' {self.window_objets[selected_row].split(':')[0]} ')
+                item = input.main(scr)
+            case 1:
+                input = ListSelect(['no started','completed','canceled','process'], 'State')
+                item = input.main(scr)
+            case 5:
+                input = ListSelect(['normal','important','urgent'], 'Priority')
+                item = input.main(scr)
+
+        return item
+
+    def wrapp(self):
+        wrapper(self.main)
+
+class ListSelect():
+    '''Display a selectable list and returns that selection.
+    Params:
+        - menu_list --> selectables
+        - promt --> promt to show in the window
+    Returns:
+        - selection --> the item selected
+    '''
+    def __init__(self,menu_list:list, promt:str):
+        self.menu = menu_list
+        self.promt = promt
+        self.wh = len(self.menu) + 5
+        self.ww = 30
+
+    def print_window(self,scr, selected_row):
+        scr.clear()
+        win_ob = self.menu
+        scr.border()
+        scr.addstr(0, 2 , ' ' + self.promt + ' ', curses.color_pair(5))
+        pos_y = 2
+
+        for idx, row in enumerate(win_ob):
+            if idx != selected_row:
+                scr.addstr(pos_y + idx, self.ww//2 - len(row)//2, row)
+            else:
+                scr.attron(color_pair(4))
+                scr.addstr(pos_y + idx, self.ww//2 - len(row)//2, row)
+                scr.attroff(color_pair(4))
+
+        if selected_row == len(self.menu):
+            scr.attron(color_pair(4))
+            scr.addstr(self.wh - 2, self.ww//2 - len(' [Cancel] ')//2,' [Cancel] ')
+            scr.attroff(color_pair(4))
+        else:
+            scr.attron(color_pair(2))
+            scr.addstr(self.wh - 2, self.ww//2 - len(' [Cancel] ')//2,' [Cancel] ')
+            scr.attroff(color_pair(2))
+
+        scr.refresh()
+
+
+    def main(self,scr):
+        curses.init_pair(2, curses.COLOR_RED,curses.COLOR_BLACK)
+        curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_BLACK)
+        curses.init_pair(4,curses.COLOR_BLACK,curses.COLOR_WHITE)
+        curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_BLACK)
+        curses.curs_set(0)
+
+        current_row = 0
+
+        scr.clear()
+        scr.refresh()
+        win = curses.newwin(self.wh, self.ww, 
+                            curses.LINES//2 - self.wh//2, 
+                            curses.COLS//2 - self.ww//2
+                            )
+        win.clear()
+        win.border()     
+        self.print_window(win, current_row)
+        win.refresh()
+        while True:
+
+            win.border()
+            
+            self.print_window(win, current_row)
+
+            win.refresh()
+
+            key = scr.getch()
+
+            if key == curses.KEY_UP and current_row > 0 and current_row <= len(self.menu):
+                current_row -= 1
+            elif key == curses.KEY_DOWN and current_row < len(self.menu):
+                current_row += 1
+            elif (key == curses.KEY_ENTER or key == 10 or key == 13) and current_row < len(self.menu):
+                return self.when_press_enter(current_row)
+            elif (key == curses.KEY_ENTER or key == 10 or key == 13) and current_row == len(self.menu):
+                return ''
+            
+            win.refresh()
+
+
+    def when_press_enter(self,selected_row):
+        return self.menu[selected_row]
+
+    def wrapp(self):
+        wrapper(self.main)
+
+class ShowTaskInfo():
+    ''' Show the task info '''
+    def __init__(self,path,filename,id_task, promt):
+        self.path = path
+        self.filename = filename
+        self.id_task = id_task
+        self.promt = promt
+
+    def print_window(self,scr, data):
+        wh = 10
+        ww = 60
+        curses.curs_set(0)
+        curses.init_pair(3,curses.COLOR_GREEN,curses.COLOR_BLACK)
+        curses.init_pair(5,curses.COLOR_CYAN,curses.COLOR_BLACK)
+        window_objets = ['Task name:', 'State:', 'Create date:', 'Finished date:', 'Finish Time:', 'Priority:']
+        win = curses.newwin(wh, ww,
+                      curses.LINES//2 - wh//2,
+                      curses.COLS//2 - ww//2)
+        scr.clear()
+        win.clear()
+        win.border()
+        
+        win.addstr(0,1, ' ' + self.promt + ' ', curses.color_pair(5))
+        pos_y = 2
+        for i in range(len(window_objets)):
+            win.addstr(pos_y, ww//6, window_objets[i], curses.color_pair(3))
+            win.addstr(pos_y, ww//2, data[i])
+            pos_y += 1
+        
+        scr.refresh()
+        win.refresh()
+        win.getch()
+            
+        
+
+    def main(self,scr):
+        f_info = sys_func.read_csv(self.path, self.filename)
+        info = []
+        for idx, l in enumerate(f_info):
+            if int(l[0]) == self.id_task:
+                info = f_info[idx]
+
+        info.pop(0)
+        self.print_window(scr,info)
+
+    def wrapp(self):
+        wrapper(self.main)
 # ---------- Main -----------
 
 if __name__ == "__main__":
     path_list = 'csv_lists'
     todo_list = DisplayList('To Dos List', path_list)
     todo_list.wrapp()
-    #input_box = Inpbox('New entry')
-    #input_box.wrapp()
+    #tasks_window = DisplayTasks('limpiar la casa', list_path=path_list, name='Tasks')
+    #tasks_window.wrapp()
+    #new_task = CreateTask('New task')
+    #new_task.wrapp()
+    #select_menu = ListSelect(['no started','completed','canceled','process'], 'State')
+    #select_menu.wrapp()
+    #task_view = ShowTaskInfo(path_list,'frankenpy',1, 'Frankenpy 1')
+    #task_view.wrapp()
     pass
