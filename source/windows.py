@@ -286,7 +286,7 @@ class DisplayTasks(DisplayList):
 
     def new_item(self, scr):
         scr.clear()
-        new_task = CreateTask(self.list_path, self.filename,'New Task', ['','','24-06-2024','0','0',''])
+        new_task = CreateTask(self.list_path, self.filename,'New Task', ['','','28-06-2024','0','0',''])
         new_task.main(scr)
         scr.clear()
         scr.refresh()
@@ -600,12 +600,38 @@ class ShowTaskInfo():
 
     def wrapp(self):
         wrapper(self.main)
+
+class TaskTracker():
+    def __init__(self, promt) -> None:
+        self.promt = promt
+        self.task_time = 0
+        self.wh = 10
+        self.ww = 40
+
+    def main(self,scr):
+        
+
+        curses.curs_set(0)
+        win = curses.newwin(self.wh, self.ww, curses.LINES//2 - self.wh//2, curses.COLS//2 - self.ww//2)
+        
+        scr.clear()
+        win.clear()
+
+        win.border()
+        win.addstr(0,2, ' ' + self.promt + ' ')
+
+        scr.refresh()
+        win.refresh()
+        scr.getch()
+
+    def wrapp(self):
+        wrapper(self.main)
 # ---------- Main -----------
 
 if __name__ == "__main__":
     path_list = 'csv_lists'
-    todo_list = DisplayList('To Dos List', path_list)
-    todo_list.wrapp()
+    #todo_list = DisplayList('To Dos List', path_list)
+    #todo_list.wrapp()
     #tasks_window = DisplayTasks('limpiar la casa', list_path=path_list, name='Tasks')
     #tasks_window.wrapp()
     #new_task = CreateTask('New task')
@@ -614,4 +640,6 @@ if __name__ == "__main__":
     #select_menu.wrapp()
     #task_view = ShowTaskInfo(path_list,'frankenpy',1, 'Frankenpy 1')
     #task_view.wrapp()
+    tracker = TaskTracker('task tracker')
+    tracker.wrapp()
     pass
