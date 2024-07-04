@@ -2,7 +2,7 @@
 import os
 import subprocess
 import csv
-from time import sleep
+import datetime
 
 # --------------- Functions ------------
 def create_a_csv(path,name):
@@ -154,11 +154,36 @@ def del_task(path, filename, id_t):
         writer = csv.writer(f, delimiter=',')
         writer.writerows(actual_list)
 
+def str_to_senconds(str_time:str):
+    ''' Conver a string with the time in seconds
+    Params
+        - str_time --> string with the format H:M:S
+    Return:
+        - seconds --> integer with the seconds
+    '''
+    if str_time == '0':
+        h = 0
+        m = 0
+        s = 0
+    else:
+        h , m , s = str_time.split(':')
 
+    seconds = datetime.timedelta(hours=int(h),minutes=int(m), seconds=int(s)).seconds
+
+    return seconds
+
+def get_date():
+    ''' Optain the actual date and returns it like a string
+    Params:
+        None
+    Return:
+        - date --> the formated date in a string D-M-Y
+    '''
+    
+    str_date = datetime.datetime.today()
+    str_date = str(str_date.strftime('%d-%m-%Y'))
+
+    return str_date
 # --------------- Main -----------------
 if __name__ == "__main__":
-    #path = 'csv_lists'
-    #data = ['Hacer las plantillas','process','21-06-2024',0,0,'normal']
-    #update_task(path,'frankenpy', data, 1)
-    #del_task(path,'limpiar la casa', 2)
     pass

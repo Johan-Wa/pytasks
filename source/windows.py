@@ -290,7 +290,7 @@ class DisplayTasks(DisplayList):
 
     def new_item(self, scr):
         scr.clear()
-        new_task = CreateTask(self.list_path, self.filename,'New Task', ['','','28-06-2024','0','00:00:00',''])
+        new_task = CreateTask(self.list_path, self.filename,'New Task', ['','no started',sys_func.get_date(),'0','00:00:00',''])
         new_task.main(scr)
         scr.clear()
         scr.refresh()
@@ -318,8 +318,8 @@ class DisplayTasks(DisplayList):
             view_task.main(scr)
             scr.clear()
             scr.refresh()
-        elif option == 'Track':
-            track_task = TaskTracker(data[0])
+        elif option == 'Track' and data[1] != 'completed':
+            track_task = TaskTracker(data, int(idx), self.filename, self.list_path)
             track_task.main(scr)
             scr.clear()
             scr.refresh()
@@ -347,7 +347,7 @@ class CreateTask():
         self.default_data = data
         self.window_objets = [
             'Task name:', 'State:','Create date:',
-            'Finished date:','Finish time:',
+            'Finished date:','Task time:',
             'Priority:', ' [Cancel] ', ' [Ok] '
         ]
         self.new = new
@@ -575,7 +575,7 @@ class ShowTaskInfo():
         curses.curs_set(0)
         curses.init_pair(3,curses.COLOR_GREEN,curses.COLOR_BLACK)
         curses.init_pair(5,curses.COLOR_CYAN,curses.COLOR_BLACK)
-        window_objets = ['Task name:', 'State:', 'Create date:', 'Finished date:', 'Finish Time:', 'Priority:']
+        window_objets = ['Task name:', 'State:', 'Create date:', 'Finished date:', 'Task Time:', 'Priority:']
         win = curses.newwin(wh, ww,
                       curses.LINES//2 - wh//2,
                       curses.COLS//2 - ww//2)
@@ -610,14 +610,18 @@ class ShowTaskInfo():
         wrapper(self.main)
 
 class TaskTracker():
-    def __init__(self, promt) -> None:
-        self.promt = promt
-        self.task_time = '00:00:00'
+    def __init__(self, data, id_task, filename, path):
+        self.filename = filename
+        self.path = path
+        self.data: list = data
+        self.idx: int = id_task
+        self.promt: str = data[0]
+        self.task_time: str = data[4]
         self.wh = 9
         self.ww = 40
         self.chronometer = False
         self.tt = 0
-        self.t1 = threading.Thread(name='Hilo_1', target=self.chrono)
+        self.t1 = threading.Thread(name='Thread_1', target=self.chrono)
         
 
     def chrono(self):
@@ -627,6 +631,8 @@ class TaskTracker():
             self.task_time = str(datetime.timedelta(seconds=self.tt))
 
     def main(self, scr):
+
+        self.tt = sys_func.str_to_senconds(self.task_time)
 
         curses.curs_set(0)
         scr.clear()
@@ -664,25 +670,72 @@ class TaskTracker():
                 self.t1.start()
             elif ch == 'p' and self.chronometer:
                 self.chronometer = False
+                msn_win = MsnScr('You are ready finished the task?')
+                task_state = msn_win.main(scr)
+                self.data[1] = task_state
+                self.data[4] = self.task_time
+
+                if task_state == 'completed':
+                    self.data[3] = sys_func.get_date()
+
+                sys_func.update_task(self.path,self.filename,self.data,self.idx)
+
+                break
                 
 
     def wrapp(self):
         wrapper(self.main)
 
+
+class MsnScr():
+    def __init__(self, msn:str):
+        self.msn = msn
+        self.wh = 9
+        self.ww = 40
+
+    def main(self,scr):
+        curses.curs_set(0)
+
+        win = curses.newwin(curses.LINES//2 - self.wh//2, curses.COLS//2 - self.ww//2 ,self.wh, self.ww)
+        option = 1
+
+        while True:
+            scr.clear()
+            win.clear()
+            win.border()
+
+            win.addstr(4, self.ww//2 - len(self.msn)//2, self.msn, curses.color_pair(5))
+
+            if option == 1:
+                win.addstr(6, 10, '[Yes]', curses.color_pair(4))
+            else:
+                win.addstr(6, 10, '[Yes]', curses.color_pair(3))
+
+            if option == 2:
+                win.addstr(6, 30, '[No]', curses.color_pair(4))
+            else:
+                win.addstr(6, 30, '[No]', curses.color_pair(2))
+
+            scr.refresh()
+            win.refresh()
+            key = scr.getch()
+            
+            if key == curses.KEY_RIGHT and option == 1:
+                option += 1
+            elif key == curses.KEY_LEFT and option == 2:
+                option -= 1
+            elif (key == curses.KEY_ENTER or key == 10 or key == 13) and option == 1:
+                return 'completed'
+            elif (key == curses.KEY_ENTER or key == 10 or key == 13) and option == 2:
+                return 'process'
+
+    def wrapp(self):
+        wrapper(self.main)
+
+
+        
+
 # ---------- Main -----------
 
 if __name__ == "__main__":
-    path_list = 'csv_lists'
-    #todo_list = DisplayList('To Dos List', path_list)
-    #todo_list.wrapp()
-    tasks_window = DisplayTasks('nuevo proyecto', list_path=path_list, name='Tasks')
-    tasks_window.wrapp()
-    #new_task = CreateTask('New task')
-    #new_task.wrapp()
-    #select_menu = ListSelect(['no started','completed','canceled','process'], 'State')
-    #select_menu.wrapp()
-    #task_view = ShowTaskInfo(path_list,'frankenpy',1, 'Frankenpy 1')
-    #task_view.wrapp()
-    #tracker = TaskTracker('task tracker')
-    #tracker.wrapp()
     pass
