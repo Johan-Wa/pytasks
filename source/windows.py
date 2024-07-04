@@ -1,6 +1,10 @@
 # ----------- Imports
 import curses
 from curses import color_pair, wrapper
+import time
+import datetime
+import threading
+
 import sys_func
 
 #----------- Clases --------
@@ -286,7 +290,7 @@ class DisplayTasks(DisplayList):
 
     def new_item(self, scr):
         scr.clear()
-        new_task = CreateTask(self.list_path, self.filename,'New Task', ['','','28-06-2024','0','0',''])
+        new_task = CreateTask(self.list_path, self.filename,'New Task', ['','','28-06-2024','0','00:00:00',''])
         new_task.main(scr)
         scr.clear()
         scr.refresh()
@@ -313,7 +317,11 @@ class DisplayTasks(DisplayList):
             view_task = ShowTaskInfo(self.list_path, self.filename, int(idx), f'Task: {idx} - {data[0]}')
             view_task.main(scr)
             scr.clear()
-            scr.addstr(option)
+            scr.refresh()
+        elif option == 'Track':
+            track_task = TaskTracker(data[0])
+            track_task.main(scr)
+            scr.clear()
             scr.refresh()
             
 
@@ -562,7 +570,7 @@ class ShowTaskInfo():
         self.promt = promt
 
     def print_window(self,scr, data):
-        wh = 10
+        wh = 11
         ww = 60
         curses.curs_set(0)
         curses.init_pair(3,curses.COLOR_GREEN,curses.COLOR_BLACK)
@@ -604,42 +612,77 @@ class ShowTaskInfo():
 class TaskTracker():
     def __init__(self, promt) -> None:
         self.promt = promt
-        self.task_time = 0
-        self.wh = 10
+        self.task_time = '00:00:00'
+        self.wh = 9
         self.ww = 40
-
-    def main(self,scr):
+        self.chronometer = False
+        self.tt = 0
+        self.t1 = threading.Thread(name='Hilo_1', target=self.chrono)
         
+
+    def chrono(self):
+        while self.chronometer:
+            time.sleep(1)
+            self.tt += 1
+            self.task_time = str(datetime.timedelta(seconds=self.tt))
+
+    def main(self, scr):
 
         curses.curs_set(0)
-        win = curses.newwin(self.wh, self.ww, curses.LINES//2 - self.wh//2, curses.COLS//2 - self.ww//2)
-        
         scr.clear()
-        win.clear()
+        win = curses.newwin(curses.LINES//2 - self.wh//2, curses.COLS//2 - self.ww//2, self.wh, self.ww)
+        win.nodelay(1)
+        scr.nodelay(1)
+        scr.timeout(150)
+        
+        while True:
+            win.border()
+            win.addstr(0,2, ' ' + self.promt + ' ', curses.color_pair(5))
+            win.addstr(self.wh//2, self.ww//2 - len(self.task_time)//2, self.task_time, curses.A_BOLD)
+            win.addstr(self.wh - 1, 1, ' S', curses.color_pair(3))
+            win.addstr(self.wh - 1, 3, 'tart ')
+            win.addstr(self.wh - 1, self.ww - 5, ' Sto')
+            win.addstr(self.wh - 1, self.ww - 1, 'p ', curses.color_pair(2))
 
-        win.border()
-        win.addstr(0,2, ' ' + self.promt + ' ')
+            scr.refresh()
+            win.refresh()
+            key = scr.getch()
+            
+            
+            if key == 27:
+                self.chronometer = False
+                break
+            
+                
+            try:
+                ch = chr(key)
+            except:
+                ch = ''
 
-        scr.refresh()
-        win.refresh()
-        scr.getch()
+            if ch == 's' and not self.chronometer:
+                self.chronometer = True
+                self.t1.start()
+            elif ch == 'p' and self.chronometer:
+                self.chronometer = False
+                
 
     def wrapp(self):
         wrapper(self.main)
+
 # ---------- Main -----------
 
 if __name__ == "__main__":
     path_list = 'csv_lists'
     #todo_list = DisplayList('To Dos List', path_list)
     #todo_list.wrapp()
-    #tasks_window = DisplayTasks('limpiar la casa', list_path=path_list, name='Tasks')
-    #tasks_window.wrapp()
+    tasks_window = DisplayTasks('nuevo proyecto', list_path=path_list, name='Tasks')
+    tasks_window.wrapp()
     #new_task = CreateTask('New task')
     #new_task.wrapp()
     #select_menu = ListSelect(['no started','completed','canceled','process'], 'State')
     #select_menu.wrapp()
     #task_view = ShowTaskInfo(path_list,'frankenpy',1, 'Frankenpy 1')
     #task_view.wrapp()
-    tracker = TaskTracker('task tracker')
-    tracker.wrapp()
+    #tracker = TaskTracker('task tracker')
+    #tracker.wrapp()
     pass

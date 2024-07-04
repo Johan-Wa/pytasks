@@ -2,6 +2,7 @@
 import os
 import subprocess
 import csv
+from time import sleep
 
 # --------------- Functions ------------
 def create_a_csv(path,name):
@@ -153,9 +154,11 @@ def del_task(path, filename, id_t):
         writer = csv.writer(f, delimiter=',')
         writer.writerows(actual_list)
 
+
 # --------------- Main -----------------
 if __name__ == "__main__":
-    path = 'csv_lists'
-    data = ['Hacer las plantillas','process','21-06-2024',0,0,'normal']
-    update_task(path,'frankenpy', data, 1)
+    #path = 'csv_lists'
+    #data = ['Hacer las plantillas','process','21-06-2024',0,0,'normal']
+    #update_task(path,'frankenpy', data, 1)
     #del_task(path,'limpiar la casa', 2)
+    pass
