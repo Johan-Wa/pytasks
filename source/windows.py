@@ -5,7 +5,10 @@ import time
 import datetime
 import threading
 
-import sys_func
+try:
+    import sys_func
+except:
+    from source import sys_func
 
 #----------- Clases --------
 class DisplayList():
