@@ -4,11 +4,15 @@ from curses import color_pair, wrapper
 import time
 import datetime
 import threading
+import os
+import sys
+from pathlib import Path
 
-try:
-    import sys_func
-except:
-    from source import sys_func
+
+rute = Path(os.path.abspath(__file__)).parent
+sys.path.append(str(rute))
+
+import sys_func
 
 #----------- Clases --------
 class DisplayList():
